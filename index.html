@@ -26,7 +26,7 @@
             grid-template-columns: repeat(3, 100px);
             grid-template-rows: repeat(3, 100px);
             gap: 5px;
-            position: relative; /* Set position relative for child elements */
+            position: relative;
         }
 
         .cell {
@@ -52,21 +52,16 @@
         .winner {
             color: #4caf50;
             font-weight: bold;
-            animation: winAnimation 0.5s ease forwards;
         }
 
-        @keyframes winAnimation {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
+        .winning-animation {
+            animation: winEffect 1s ease-in-out forwards;
         }
 
-        .winning-line {
-            position: absolute;
-            background-color: rgba(76, 175, 80, 0.7);
-            height: 10px;
-            transition: 0.3s ease-in-out;
-            z-index: 1;
+        @keyframes winEffect {
+            0% { background-color: #fff; transform: scale(1); }
+            50% { background-color: #4caf50; transform: scale(1.2); }
+            100% { background-color: #4caf50; transform: scale(1); }
         }
 
         .reset {
@@ -135,37 +130,11 @@
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 5;
         }
-
-        .difficulty {
-            margin-bottom: 20px;
-            color: #fff;
-        }
-
-        .difficulty button {
-            margin: 0 5px;
-            padding: 5px 10px;
-            background-color: #333;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
-        }
-
-        .difficulty button:hover {
-            background-color: #555;
-            transform: scale(1.05);
-        }
     </style>
 </head>
 <body>
 
 <h1>Tic-Tac-Toe</h1>
-<div class="difficulty">
-    <span>Select Difficulty: </span>
-    <button id="easy">Easy</button>
-    <button id="hard">Hard</button>
-</div>
 <div class="board" id="board"></div>
 <div class="score" id="score"></div>
 <button class="reset" id="resetButton">Restart Game</button>
@@ -184,15 +153,12 @@
     const dialogMessage = document.getElementById('dialogMessage');
     const overlay = document.getElementById('overlay');
     const dialogClose = document.getElementById('dialogClose');
-    const easyButton = document.getElementById('easy');
-    const hardButton = document.getElementById('hard');
 
     let currentPlayer = 'X';
     let gameActive = true;
     let gameState = ['', '', '', '', '', '', '', '', ''];
     let playerXWins = 0;
     let playerOWins = 0;
-    let difficulty = 'easy';
 
     const winningConditions = [
         [0, 1, 2],
@@ -219,53 +185,34 @@
         const clickedCell = event.target;
         const index = clickedCell.getAttribute('data-index');
 
-        // Check if the cell is already filled or game is not active
         if (gameState[index] !== '' || !gameActive) {
             return;
         }
 
-        // Update the game state and UI for the current player
         gameState[index] = currentPlayer;
         clickedCell.textContent = currentPlayer;
 
-        // Check for game results
         checkResult();
 
-        // Switch player
         if (gameActive) {
             currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-
-            // If it's the computer's turn
             if (currentPlayer === 'O') {
-                setTimeout(computerMove, 1000); // Delay for computer move
+                setTimeout(computerMove, 1000);
             }
         }
     }
 
     function computerMove() {
-        let moveIndex;
-
-        if (difficulty === 'easy') {
-            moveIndex = getRandomMove();
-        } else {
-            moveIndex = getBestMove(); // Use strategy for hard mode
-        }
-
+        let moveIndex = getRandomMove();
         if (moveIndex !== null) {
-            makeMove(moveIndex, 'O'); // Make move for computer
-            currentPlayer = 'X'; // Switch back to Player X
+            makeMove(moveIndex, 'O');
+            currentPlayer = 'X';
         }
     }
 
     function getRandomMove() {
         const availableCells = gameState.map((cell, index) => (cell === '') ? index : null).filter(val => val !== null);
         return availableCells[Math.floor(Math.random() * availableCells.length)];
-    }
-
-    function getBestMove() {
-        // Implement logic to find the best move for the computer
-        // For simplicity, let's just use a random move for now.
-        return getRandomMove();
     }
 
     function makeMove(index, player) {
@@ -278,6 +225,7 @@
 
     function checkResult() {
         let roundWon = false;
+        let winningCells = [];
 
         for (let i = 0; i < winningConditions.length; i++) {
             const [a, b, c] = winningConditions[i];
@@ -286,17 +234,26 @@
             }
             if (gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
                 roundWon = true;
+                winningCells = [a, b, c];
                 break;
             }
         }
 
         if (roundWon) {
             gameActive = false;
+            highlightWinningCells(winningCells);
             displayWinner(currentPlayer);
             updateScore(currentPlayer);
         } else if (!gameState.includes('')) {
             displayDraw();
         }
+    }
+
+    function highlightWinningCells(cells) {
+        cells.forEach(index => {
+            const cell = document.querySelector(`.cell[data-index='${index}']`);
+            cell.classList.add('winning-animation');
+        });
     }
 
     function displayWinner(winner) {
@@ -328,32 +285,18 @@
         const cells = document.querySelectorAll('.cell');
         cells.forEach(cell => {
             cell.textContent = '';
+            cell.classList.remove('winning-animation');
         });
 
-        // Reset the winning line if present
-        const winningLine = document.querySelector('.winning-line');
-        if (winningLine) {
-            winningLine.remove();
-        }
-
-        // Hide dialog and overlay
         dialog.style.display = 'none';
         overlay.style.display = 'none';
     }
 
-    function handleCloseDialog() {
-        resetGame(); // Reset the game immediately after closing the dialog
-    }
-
-    dialogClose.addEventListener('click', handleCloseDialog);
+    dialogClose.addEventListener('click', resetGame);
     resetButton.addEventListener('click', resetGame);
-    easyButton.addEventListener('click', () => { difficulty = 'easy'; resetGame(); });
-    hardButton.addEventListener('click', () => { difficulty = 'hard'; resetGame(); });
 
     createBoard();
     scoreDisplay.textContent = `Player X: ${playerXWins} - Player O: ${playerOWins}`;
-    // Start the game automatically by triggering the first computer move
-    computerMove();
 </script>
 </body>
 </html>
