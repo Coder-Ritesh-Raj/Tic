@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #a8e0f8, #f8c2e6);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            position: relative; /* Set position relative for child elements */
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            background-color: #fff;
+            border: 3px solid #333;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+        }
+
+        .cell:hover {
+            background-color: #f9f9f9;
+            transform: scale(1.05);
+        }
+
+        .winner {
+            color: #4caf50;
+            font-weight: bold;
+            animation: winAnimation 0.5s ease forwards;
+        }
+
+        @keyframes winAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .winning-line {
+            position: absolute;
+            background-color: rgba(76, 175, 80, 0.7);
+            height: 10px;
+            transition: 0.3s ease-in-out;
+            z-index: 1;
+        }
+
+        .reset {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .reset:hover {
+            background-color: #555;
+            transform: scale(1.05);
+        }
+
+        .score {
+            margin: 20px 0;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        .dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        .dialog h2 {
+            margin: 0;
+        }
+
+        .dialog button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .dialog button:hover {
+            background-color: #555;
+            transform: scale(1.05);
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 5;
+        }
+
+        .difficulty {
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .difficulty button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .difficulty button:hover {
+            background-color: #555;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+<h1>Tic-Tac-Toe</h1>
+<div class="difficulty">
+    <span>Select Difficulty: </span>
+    <button id="easy">Easy</button>
+    <button id="hard">Hard</button>
+</div>
+<div class="board" id="board"></div>
+<div class="score" id="score"></div>
+<button class="reset" id="resetButton">Restart Game</button>
+
+<div class="overlay" id="overlay"></div>
+<div class="dialog" id="dialog">
+    <h2 id="dialogMessage"></h2>
+    <button id="dialogClose">Close</button>
+</div>
+
+<script>
+    const board = document.getElementById('board');
+    const scoreDisplay = document.getElementById('score');
+    const resetButton = document.getElementById('resetButton');
+    const dialog = document.getElementById('dialog');
+    const dialogMessage = document.getElementById('dialogMessage');
+    const overlay = document.getElementById('overlay');
+    const dialogClose = document.getElementById('dialogClose');
+    const easyButton = document.getElementById('easy');
+    const hardButton = document.getElementById('hard');
+
+    let currentPlayer = 'X';
+    let gameActive = true;
+    let gameState = ['', '', '', '', '', '', '', '', ''];
+    let playerXWins = 0;
+    let playerOWins = 0;
+    let difficulty = 'easy';
+
+    const winningConditions = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6]
+    ];
+
+    function createBoard() {
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.setAttribute('data-index', i);
+            cell.addEventListener('click', handleCellClick);
+            board.appendChild(cell);
+        }
+    }
+
+    function handleCellClick(event) {
+        const clickedCell = event.target;
+        const index = clickedCell.getAttribute('data-index');
+
+        // Check if the cell is already filled or game is not active
+        if (gameState[index] !== '' || !gameActive) {
+            return;
+        }
+
+        // Update the game state and UI for the current player
+        gameState[index] = currentPlayer;
+        clickedCell.textContent = currentPlayer;
+
+        // Check for game results
+        checkResult();
+
+        // Switch player
+        if (gameActive) {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+
+            // If it's the computer's turn
+            if (currentPlayer === 'O') {
+                setTimeout(computerMove, 1000); // Delay for computer move
+            }
+        }
+    }
+
+    function computerMove() {
+        let moveIndex;
+
+        if (difficulty === 'easy') {
+            moveIndex = getRandomMove();
+        } else {
+            moveIndex = getBestMove(); // Use strategy for hard mode
+        }
+
+        if (moveIndex !== null) {
+            makeMove(moveIndex, 'O'); // Make move for computer
+            currentPlayer = 'X'; // Switch back to Player X
+        }
+    }
+
+    function getRandomMove() {
+        const availableCells = gameState.map((cell, index) => (cell === '') ? index : null).filter(val => val !== null);
+        return availableCells[Math.floor(Math.random() * availableCells.length)];
+    }
+
+    function getBestMove() {
+        // Implement logic to find the best move for the computer
+        // For simplicity, let's just use a random move for now.
+        return getRandomMove();
+    }
+
+    function makeMove(index, player) {
+        gameState[index] = player;
+        const cell = document.querySelector(`.cell[data-index='${index}']`);
+        cell.textContent = player;
+
+        checkResult();
+    }
+
+    function checkResult() {
+        let roundWon = false;
+
+        for (let i = 0; i < winningConditions.length; i++) {
+            const [a, b, c] = winningConditions[i];
+            if (gameState[a] === '' || gameState[b] === '' || gameState[c] === '') {
+                continue;
+            }
+            if (gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                roundWon = true;
+                break;
+            }
+        }
+
+        if (roundWon) {
+            gameActive = false;
+            displayWinner(currentPlayer);
+            updateScore(currentPlayer);
+        } else if (!gameState.includes('')) {
+            displayDraw();
+        }
+    }
+
+    function displayWinner(winner) {
+        dialogMessage.textContent = `Player ${winner} wins!`;
+        dialog.style.display = 'block';
+        overlay.style.display = 'block';
+    }
+
+    function displayDraw() {
+        dialogMessage.textContent = 'It\'s a draw!';
+        dialog.style.display = 'block';
+        overlay.style.display = 'block';
+    }
+
+    function updateScore(winner) {
+        if (winner === 'X') {
+            playerXWins++;
+        } else {
+            playerOWins++;
+        }
+        scoreDisplay.textContent = `Player X: ${playerXWins} - Player O: ${playerOWins}`;
+    }
+
+    function resetGame() {
+        gameActive = true;
+        gameState = ['', '', '', '', '', '', '', '', ''];
+        currentPlayer = 'X';
+
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            cell.textContent = '';
+        });
+
+        // Reset the winning line if present
+        const winningLine = document.querySelector('.winning-line');
+        if (winningLine) {
+            winningLine.remove();
+        }
+
+        // Hide dialog and overlay
+        dialog.style.display = 'none';
+        overlay.style.display = 'none';
+    }
+
+    function handleCloseDialog() {
+        resetGame(); // Reset the game immediately after closing the dialog
+    }
+
+    dialogClose.addEventListener('click', handleCloseDialog);
+    resetButton.addEventListener('click', resetGame);
+    easyButton.addEventListener('click', () => { difficulty = 'easy'; resetGame(); });
+    hardButton.addEventListener('click', () => { difficulty = 'hard'; resetGame(); });
+
+    createBoard();
+    scoreDisplay.textContent = `Player X: ${playerXWins} - Player O: ${playerOWins}`;
+    // Start the game automatically by triggering the first computer move
+    computerMove();
+</script>
+</body>
+</html>
