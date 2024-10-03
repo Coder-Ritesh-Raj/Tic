@@ -203,16 +203,70 @@
     }
 
     function computerMove() {
-        let moveIndex = getRandomMove();
+        let moveIndex = minimax(gameState, 'O').index;
         if (moveIndex !== null) {
             makeMove(moveIndex, 'O');
             currentPlayer = 'X';
         }
     }
 
-    function getRandomMove() {
-        const availableCells = gameState.map((cell, index) => (cell === '') ? index : null).filter(val => val !== null);
-        return availableCells[Math.floor(Math.random() * availableCells.length)];
+    function minimax(newBoard, player) {
+        const availableSpots = newBoard.map((cell, index) => cell === '' ? index : null).filter(val => val !== null);
+
+        if (checkWin(newBoard, 'X')) {
+            return { score: -10 };
+        } else if (checkWin(newBoard, 'O')) {
+            return { score: 10 };
+        } else if (availableSpots.length === 0) {
+            return { score: 0 };
+        }
+
+        const moves = [];
+
+        for (let i = 0; i < availableSpots.length; i++) {
+            const move = {};
+            move.index = availableSpots[i];
+            newBoard[availableSpots[i]] = player;
+
+            if (player === 'O') {
+                const result = minimax(newBoard, 'X');
+                move.score = result.score;
+            } else {
+                const result = minimax(newBoard, 'O');
+                move.score = result.score;
+            }
+
+            newBoard[availableSpots[i]] = '';
+
+            moves.push(move);
+        }
+
+        let bestMove;
+        if (player === 'O') {
+            let bestScore = -Infinity;
+            for (let i = 0; i < moves.length; i++) {
+                if (moves[i].score > bestScore) {
+                    bestScore = moves[i].score;
+                    bestMove = i;
+                }
+            }
+        } else {
+            let bestScore = Infinity;
+            for (let i = 0; i < moves.length; i++) {
+                if (moves[i].score < bestScore) {
+                    bestScore = moves[i].score;
+                    bestMove = i;
+                }
+            }
+        }
+
+        return moves[bestMove];
+    }
+
+    function checkWin(board, player) {
+        return winningConditions.some(condition => {
+            return condition.every(index => board[index] === player);
+        });
     }
 
     function makeMove(index, player) {
